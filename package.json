@@ -1,6 +1,6 @@
 {
 	"name": "@tevm/logger",
-	"version": "1.0.0-rc.151",
+	"version": "1.0.0",
 	"description": "Shared structured logging for TEVM core and bundler packages",
 	"keywords": [
 		"ethereum",
