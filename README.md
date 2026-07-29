@@ -1,33 +1,64 @@
-<p align="center">
-  <a href="https://tevm.sh/">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/35039927/218812217-92f0f784-cb85-43b9-9ca6-e2b9effd9eb2.png">
-      <img alt="wagmi logo" src="https://user-images.githubusercontent.com/35039927/218812217-92f0f784-cb85-43b9-9ca6-e2b9effd9eb2.png" width="auto" height="300">
-    </picture>
-  </a>
-</p>
-
-<p align="center">
-  Execute solidity scripts in browser
-<p>
-
-[![CI](https://github.com/evmts/tevm-monorepo/actions/workflows/e2e.yml/badge.svg)](https://github.com/evmts/tevm-monorepo/actions/workflows/e2e.yml)
-[![CI](https://github.com/evmts/tevm-monorepo/actions/workflows/unit.yml/badge.svg)](https://github.com/evmts/tevm-monorepo/actions/workflows/unit.yml)
-<a href="https://www.npmjs.com/package/@tevm/logger" target="\_parent">
-<img alt="" src="https://img.shields.io/npm/dm/@tevm/logger.svg" />
-</a>
-<a href="https://bundlephobia.com/package/@tevm/logger@latest" target="\_parent">
-<img alt="" src="https://badgen.net/bundlephobia/minzip/@tevm/logger" />
-</a>
-
 # @tevm/logger
 
-A lightweight wrapper around pino
+[![CI](https://github.com/evmts/tevm-logger/actions/workflows/ci.yml/badge.svg)](https://github.com/evmts/tevm-logger/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@tevm/logger.svg)](https://www.npmjs.com/package/@tevm/logger)
 
-## Visit [Docs](https://tevm.sh/) for docs, guides, API and more!
+Shared structured logging for [TEVM](https://tevm.sh). This package is the small logging layer used by TEVM core and
+bundler packages. It wraps [pino](https://getpino.io) so TEVM components can use a consistent logger without depending
+on the rest of the TEVM runtime.
 
-## See [Tevm Beta project board](https://github.com/orgs/tevm/projects/1) for progress on the upcoming beta release
+This repository was extracted from the
+[TEVM monorepo](https://github.com/evmts/tevm-monorepo) with its package history preserved. It is versioned and released
+independently, while the umbrella TEVM documentation remains at [tevm.sh](https://tevm.sh).
 
-## License 📄
+## Installation
 
-<a href="./LICENSE"><img src="https://user-images.githubusercontent.com/35039927/231030761-66f5ce58-a4e9-4695-b1fe-255b1bceac92.png" width="200" /></a>
+```sh
+pnpm add @tevm/logger
+```
+
+The package supports both ESM and CommonJS.
+
+## Usage
+
+```ts
+import { createLogger } from '@tevm/logger'
+
+const logger = createLogger({
+	name: 'my-tevm-app',
+	level: 'info',
+})
+
+logger.info('TEVM is ready')
+```
+
+The available levels are `fatal`, `error`, `warn`, `info`, `debug`, and `trace`.
+
+## Development
+
+Use Node 24 and pnpm 9:
+
+```sh
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm test
+```
+
+Package API documentation lives at [logger.tevm.sh](https://logger.tevm.sh).
+
+## Releases
+
+User-facing changes should include a Changeset:
+
+```sh
+pnpm changeset
+```
+
+Merges to `main` update a release pull request. Merging that release pull request publishes the package to npm through
+GitHub Actions with npm provenance.
+
+## License
+
+[MIT](./LICENSE)

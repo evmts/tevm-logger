@@ -1,8 +1,9 @@
 {
 	"extends": "@tevm/tsconfig/base.json",
 	"compilerOptions": {
+		"ignoreDeprecations": "6.0",
 		"skipLibCheck": true,
-		"types": ["bun-types"]
+		"types": ["node"]
 	},
 	"include": ["src/*.js", "src/*.ts"]
 }
