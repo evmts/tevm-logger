@@ -46,7 +46,13 @@ pnpm build
 pnpm test
 ```
 
-Package API documentation lives at [logger.tevm.sh](https://logger.tevm.sh).
+Package API documentation lives at [logger.tevm.sh](https://logger.tevm.sh). The site source is in
+[`site/`](./site) (built with [vocs](https://vocs.dev)):
+
+```sh
+pnpm docs:dev     # local dev server
+pnpm docs:build   # production build (also checks for dead links)
+```
 
 ## Releases
 

@@ -1,0 +1,132 @@
+---
+title: createLogger
+description: API reference for createLogger.
+---
+
+# createLogger
+
+Creates a Tevm logger instance. Thin wrapper around [pino](https://getpino.io/#/docs/api): the returned value
+**is** a pino logger, so every pino feature works exactly as pino documents it.
+
+```ts
+function createLogger(options: LogOptions): Logger
+```
+
+## Import
+
+```ts
+import { createLogger } from '@tevm/logger'
+```
+
+## Parameters
+
+### `options`
+
+- **Type:** [`LogOptions`](/reference/log-options)
+
+| Property | Type                                                                | Description                                                        |
+| -------- | ------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `name`   | `string`                                                             | Added as a `name` field to every record this logger emits.         |
+| `level`  | `'fatal' \| 'error' \| 'warn' \| 'info' \| 'debug' \| 'trace'`       | Minimum severity to emit. Anything less severe is dropped.         |
+
+Both properties are required.
+
+## Returns
+
+[`Logger`](/reference/logger) — a `pino.Logger`.
+
+## Throws
+
+`Error` — if `options.level` is not one of the six valid levels. pino validates eagerly at construction:
+
+```ts
+import { createLogger } from '@tevm/logger'
+
+// Throws: unknown level verbose
+createLogger({ name: 'app', level: 'verbose' as never })
+```
+
+TypeScript catches this at compile time; the runtime throw matters when the level comes from an environment
+variable or a JSON config file. Validate before constructing:
+
+```ts [validate-level.ts]
+import { createLogger, type Level, type Logger } from '@tevm/logger'
+
+const LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const
+
+/**
+ * Builds a logger from an untrusted level string.
+ * @throws {Error} If `level` is not a valid log level.
+ */
+export const loggerFromUnknownLevel = (name: string, level: string): Logger => {
+	if (!(LEVELS as readonly string[]).includes(level)) {
+		throw new Error(`Invalid log level ${JSON.stringify(level)}. Expected one of: ${LEVELS.join(', ')}`)
+	}
+	return createLogger({ name, level: level as Level })
+}
+```
+
+## Behavior
+
+- **Destination.** Node: newline-delimited JSON on stdout (fd 1), written synchronously. Browser: routed to the
+  matching `console` method.
+- **Every record includes** `level` (numeric), `time` (epoch ms), `name`, and — in Node — `pid` and `hostname`.
+- **BigInts are serialized as strings** rather than throwing, which matters for block numbers and wei values.
+- **No transport is configured.** For file output, redaction, or async transports, construct pino directly —
+  see [Transports & redaction](/guides/production).
+
+## Examples
+
+### Basic
+
+```ts [basic.ts]
+import { createLogger } from '@tevm/logger'
+
+const logger = createLogger({ name: 'tevm-node', level: 'info' })
+
+logger.info('node started')
+logger.info({ chainId: 1, blockNumber: 21_000_000n }, 'forked mainnet')
+```
+
+### Logging errors
+
+```ts [errors.ts]
+import { createLogger } from '@tevm/logger'
+
+const logger = createLogger({ name: 'tevm-node', level: 'info' })
+
+try {
+	throw new Error('fork provider unreachable')
+} catch (error) {
+	// Under `err`, so pino's serializer emits type, message, and stack.
+	logger.error({ err: error }, 'failed to fork')
+}
+```
+
+### Child logger
+
+```ts [child.ts]
+import { createLogger } from '@tevm/logger'
+
+const logger = createLogger({ name: 'tevm-node', level: 'debug' })
+const requestLogger = logger.child({ requestId: '01H8X' })
+
+requestLogger.debug({ method: 'eth_call' }, 'handling request')
+```
+
+## Methods on the returned logger
+
+The most commonly used members. See the [pino API](https://getpino.io/#/docs/api) for the full surface.
+
+| Member                                     | Description                                                          |
+| ------------------------------------------ | -------------------------------------------------------------------- |
+| `fatal/error/warn/info/debug/trace(...)`   | Emit a record. Call as `(obj, msg)` or `(msg)`.                      |
+| `child(bindings)`                          | New logger with extra fields on every record.                        |
+| `level`                                    | Readable **and writable** — change verbosity at runtime.             |
+| `isLevelEnabled(level)`                    | Guard expensive payload construction.                                |
+| `silent(...)`                              | No-op; useful as a default logger.                                   |
+| `flush()`                                  | Flush buffered records (only meaningful with async transports).      |
+
+## Source
+
+[`src/createLogger.js`](https://github.com/evmts/tevm-logger/blob/main/src/createLogger.js)

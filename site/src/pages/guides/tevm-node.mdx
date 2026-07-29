@@ -1,0 +1,115 @@
+---
+title: Using the logger with Tevm Node
+description: How loggingLevel, node.logger, and @tevm/logger fit together.
+---
+
+# Using the logger with Tevm Node
+
+You rarely construct a logger for Tevm — Tevm constructs one for you. Understanding which knob controls it
+saves a lot of guessing.
+
+## `loggingLevel` creates the node's logger
+
+`createTevmNode` accepts a `loggingLevel` option typed as `LogOptions['level']` — the exact `Level` union this
+package exports. It builds the node's logger with it:
+
+```js
+// packages/node/src/createTevmNode.js, in the Tevm monorepo
+const loggingLevel = options.loggingLevel ?? 'warn'
+const logger = createLogger({ name: 'TevmClient', level: loggingLevel })
+```
+
+Two consequences worth internalizing:
+
+1. **The default is `warn`,** not `info`. A quiet node is working as intended.
+2. The node's records carry `name: "TevmClient"`. `@tevm/common` builds its own with `name: "@tevm/common"`, so
+   you can tell configuration logs from execution logs by the `name` field alone.
+
+```ts [node-logging.ts]
+import { createTevmNode } from 'tevm'
+
+const node = createTevmNode({
+	loggingLevel: 'debug',
+})
+
+await node.ready()
+
+// `node.logger` is a `Logger` from @tevm/logger — the same object type createLogger returns.
+node.logger.info({ chainId: 1 }, 'node is ready')
+```
+
+## Reusing the node's logger
+
+`TevmNode` exposes the logger it built as `node.logger`, typed as `Logger` from this package. Log your own
+application events through it and they land in the same stream, at the same level, with the same shape as
+Tevm's internal records:
+
+```ts [share-logger.ts]
+import { createTevmNode } from 'tevm'
+import { encodeFunctionData, parseAbi } from 'viem'
+
+const node = createTevmNode({ loggingLevel: 'info' })
+await node.ready()
+
+const appLogger = node.logger.child({ component: 'my-app' })
+
+const abi = parseAbi(['function balanceOf(address owner) view returns (uint256)'])
+
+const data = encodeFunctionData({
+	abi,
+	functionName: 'balanceOf',
+	args: ['0x0000000000000000000000000000000000000001'],
+})
+
+appLogger.info({ data }, 'calling balanceOf')
+
+const vm = await node.getVm()
+const result = await vm.evm.runCall({
+	to: new Uint8Array(20),
+	data: Buffer.from(data.slice(2), 'hex'),
+})
+
+appLogger.info({ gasUsed: result.execResult.executionGasUsed }, 'call finished')
+```
+
+## Turning up Tevm's own verbosity
+
+When something inside Tevm misbehaves, raise `loggingLevel` rather than adding your own logging around it:
+
+```ts [debug-tevm.ts]
+import { createTevmNode, http } from 'tevm'
+
+const node = createTevmNode({
+	// 'debug' surfaces fork requests, state cache behavior, and call summaries.
+	loggingLevel: 'debug',
+	fork: { transport: http('https://mainnet.optimism.io')({}) },
+})
+
+await node.ready()
+node.logger.info('forked node ready')
+```
+
+Because `node.logger.level` is writable, you can also flip it after construction — useful for turning on debug
+logging around a single suspicious call and turning it back off:
+
+```ts [scoped-debug.ts]
+import { createTevmNode } from 'tevm'
+
+const node = createTevmNode({ loggingLevel: 'warn' })
+await node.ready()
+
+const previousLevel = node.logger.level
+node.logger.level = 'trace'
+try {
+	const vm = await node.getVm()
+	await vm.evm.runCall({ to: new Uint8Array(20), data: new Uint8Array() })
+} finally {
+	node.logger.level = previousLevel
+}
+```
+
+## Which packages use this logger
+
+Inside the Tevm monorepo, `@tevm/logger` is a dependency of `@tevm/common`, `@tevm/node`, `@tevm/blockchain`,
+`@tevm/evm`, `@tevm/state`, and the bundler packages `@tevm/compiler` and `@tevm/mud`. Filtering on the `name`
+field tells you which one produced a record.

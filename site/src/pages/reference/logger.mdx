@@ -1,0 +1,115 @@
+---
+title: Logger
+description: API reference for the Logger type.
+---
+
+# Logger
+
+The type of the value returned by [`createLogger`](/reference/create-logger). It is an alias for pino's logger
+type:
+
+```ts
+type Logger = import('pino').Logger<never>
+```
+
+The `never` type argument means "no custom levels" — the six standard levels are the whole vocabulary. See
+[Log levels](/guides/log-levels).
+
+## Import
+
+```ts
+import type { Logger } from '@tevm/logger'
+```
+
+## Usage
+
+Use it to type parameters and fields that accept a logger, so callers keep control of level and destination:
+
+```ts [use-logger-type.ts]
+import { createLogger, type Logger } from '@tevm/logger'
+
+type Deps = {
+	logger: Logger
+}
+
+/**
+ * Fetches a balance, logging the attempt and the outcome.
+ * @throws {Error} If the address is not a 20-byte hex string.
+ */
+export const getBalance = async (address: string, { logger }: Deps): Promise<bigint> => {
+	if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+		throw new Error(`Invalid address: ${address}`)
+	}
+
+	const scoped = logger.child({ address })
+	scoped.debug('fetching balance')
+
+	const balance = 10n ** 18n
+	scoped.info({ balance }, 'balance fetched')
+	return balance
+}
+
+const logger = createLogger({ name: 'wallet', level: 'debug' })
+await getBalance('0x0000000000000000000000000000000000000001', { logger })
+```
+
+`TevmNode.logger` is declared with this exact type, so a `Logger` you construct and one you take from a node are
+interchangeable.
+
+## Surface
+
+`Logger` is pino's type, so it carries pino's full API. The parts you will actually use:
+
+### Level methods
+
+```ts
+logger.fatal(obj?, msg?, ...args)
+logger.error(obj?, msg?, ...args)
+logger.warn(obj?, msg?, ...args)
+logger.info(obj?, msg?, ...args)
+logger.debug(obj?, msg?, ...args)
+logger.trace(obj?, msg?, ...args)
+logger.silent(obj?, msg?, ...args)
+```
+
+The **object comes first**, the message second. `logger.info('hello %s', 'world')` also works — pino supports
+printf-style interpolation — but structured fields are what make logs queryable.
+
+### `child(bindings)`
+
+```ts
+const requestLogger = logger.child({ requestId: 'abc' })
+```
+
+Returns a new `Logger` that adds `bindings` to every record. See
+[Child loggers & context](/guides/child-loggers).
+
+### `level`
+
+```ts
+logger.level // 'info'
+logger.level = 'debug' // writable
+```
+
+### `isLevelEnabled(level)`
+
+```ts
+if (logger.isLevelEnabled('trace')) {
+	logger.trace({ trace: buildExpensiveTrace() }, 'execution trace')
+}
+```
+
+### `flush()`
+
+Flushes buffered records. A no-op for the default synchronous stdout destination; required before exit when you
+use an async transport ([Transports & redaction](/guides/production)).
+
+## A note on the type
+
+The source carries a `TODO` to narrow this type so Tevm exposes a smaller, stable logging interface rather than
+all of pino. Until that happens, treat the *documented* surface above as the supported one: the rest of pino
+works, but a future minor may narrow `Logger`.
+
+## Source
+
+[`src/Logger.ts`](https://github.com/evmts/tevm-logger/blob/main/src/Logger.ts)

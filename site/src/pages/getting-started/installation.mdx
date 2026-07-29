@@ -1,0 +1,86 @@
+---
+title: Installation
+description: Install @tevm/logger with npm, pnpm, yarn, or bun.
+---
+
+# Installation
+
+`@tevm/logger` is published to npm as **`@tevm/logger`**. The current release line is `1.0.0-rc.x` — the same
+release-candidate line as the rest of Tevm 1.0.
+
+:::code-group
+
+```bash [pnpm]
+pnpm add @tevm/logger
+```
+
+```bash [npm]
+npm install @tevm/logger
+```
+
+```bash [yarn]
+yarn add @tevm/logger
+```
+
+```bash [bun]
+bun add @tevm/logger
+```
+
+:::
+
+## Version ranges
+
+Because 1.0 is still a release candidate, a caret range will **not** pick up newer RCs (`^1.0.0-rc.151` does not
+match `1.0.0-rc.152`). Pick the range deliberately:
+
+```json [package.json]
+{
+	"dependencies": {
+		"@tevm/logger": "1.0.0-rc.151"
+	}
+}
+```
+
+- **Pin the exact RC** (shown above) if you also depend on `tevm` and want the two to move together.
+- Use `"^1.0.0-rc.151"` only if you are happy staying on that exact RC until you bump manually.
+- Once 1.0.0 final ships, `"^1.0.0"` is the range you want.
+
+If you already depend on `tevm`, you do not need to install this package separately — `tevm` depends on it and
+re-exports nothing you need. Install it directly when you are writing a package that logs but should not depend
+on the Tevm runtime.
+
+## Requirements
+
+| Requirement | Value                                                |
+| ----------- | ---------------------------------------------------- |
+| Node.js     | `^24.0.0` (the `engines` field of this package)       |
+| Runtime dep | `pino@^10.3.1` (installed for you)                    |
+| Module      | ESM and CommonJS builds are both published            |
+| Types       | Bundled — no `@types/*` package needed                |
+
+## ESM and CommonJS
+
+Both entrypoints are published, so either import style works:
+
+```ts [esm.ts]
+import { createLogger } from '@tevm/logger'
+
+const logger = createLogger({ name: 'esm-example', level: 'info' })
+logger.info('hello from ESM')
+```
+
+```js [cjs.cjs]
+const { createLogger } = require('@tevm/logger')
+
+const logger = createLogger({ name: 'cjs-example', level: 'info' })
+logger.info('hello from CommonJS')
+```
+
+## Browser and edge runtimes
+
+pino ships a browser build, and `@tevm/logger` is marked `sideEffects: false`, so bundlers can tree-shake it.
+No configuration is required for Vite, webpack, Rollup, or esbuild — importing `createLogger` in browser code
+resolves to pino's browser entry, which writes to the `console` instead of stdout.
+
+Transports (`pino-pretty`, file transports, worker-thread transports) are **Node-only**. See
+[Pretty printing](/guides/pretty-printing) for how to keep those out of browser bundles.

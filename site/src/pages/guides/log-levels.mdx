@@ -1,0 +1,111 @@
+---
+title: Log levels
+description: What each log level means in Tevm, and how to set or change it.
+---
+
+# Log levels
+
+`@tevm/logger` exposes six levels, from least to most verbose. They are the same six pino uses, and the same six
+`TevmNode`'s `loggingLevel` option accepts.
+
+| Level   | Numeric | Use it for                                                                 |
+| ------- | ------- | -------------------------------------------------------------------------- |
+| `fatal` | 60      | The process cannot continue and is about to exit.                           |
+| `error` | 50      | An operation failed. Someone should look at it. The process survives.       |
+| `warn`  | 40      | Something is suspicious or deprecated but the operation completed.          |
+| `info`  | 30      | Normal, low-volume lifecycle events. **The production default.**            |
+| `debug` | 20      | Detail useful when diagnosing a specific problem. Not for production.       |
+| `trace` | 10      | Firehose: per-opcode, per-request internals. Development only.              |
+
+Setting `level: 'info'` means "emit `info` and everything more severe" — `info`, `warn`, `error`, `fatal`. The
+levels below it are dropped.
+
+## Choosing a level
+
+```ts [level-from-env.ts]
+import { createLogger, type Level } from '@tevm/logger'
+
+const LEVELS: readonly Level[] = ['fatal', 'error', 'warn', 'info', 'debug', 'trace']
+
+/**
+ * Reads LOG_LEVEL from the environment, falling back to `info`.
+ * Throws rather than silently logging at the wrong verbosity.
+ */
+const levelFromEnv = (): Level => {
+	const raw = process.env['LOG_LEVEL']
+	if (raw === undefined) return 'info'
+	if (!LEVELS.includes(raw as Level)) {
+		throw new Error(`Invalid LOG_LEVEL ${JSON.stringify(raw)}. Expected one of: ${LEVELS.join(', ')}`)
+	}
+	return raw as Level
+}
+
+const logger = createLogger({ name: 'tevm-app', level: levelFromEnv() })
+
+logger.info({ level: logger.level }, 'logger configured')
+```
+
+Run it:
+
+```bash
+LOG_LEVEL=debug node --experimental-strip-types level-from-env.ts
+```
+
+## Changing the level at runtime
+
+The returned logger's `level` property is writable, so you can turn on debugging without restarting:
+
+```ts [runtime-level.ts]
+import { createLogger } from '@tevm/logger'
+
+const logger = createLogger({ name: 'tevm-app', level: 'info' })
+
+logger.debug('hidden')
+
+// Flip to debug — e.g. from a SIGUSR2 handler or an admin endpoint.
+logger.level = 'debug'
+logger.debug('now visible')
+
+// Ask before doing expensive work to build a log payload.
+if (logger.isLevelEnabled('trace')) {
+	logger.trace({ trace: buildExpensiveTrace() }, 'execution trace')
+}
+
+function buildExpensiveTrace() {
+	return { steps: Array.from({ length: 1000 }, (_, index) => ({ pc: index })) }
+}
+```
+
+A realistic version, toggling with a Unix signal:
+
+```ts [signal-toggle.ts]
+import { createLogger } from '@tevm/logger'
+
+const logger = createLogger({ name: 'tevm-node', level: 'info' })
+
+process.on('SIGUSR2', () => {
+	logger.level = logger.level === 'info' ? 'debug' : 'info'
+	logger.info({ level: logger.level }, 'log level toggled')
+})
+
+logger.info({ pid: process.pid }, 'send SIGUSR2 to toggle debug logging')
+
+// Keep the process alive so you can actually send the signal.
+setInterval(() => logger.debug('tick'), 1000)
+```
+
+Then, in another shell: `kill -USR2 <pid>`.
+
+## Level guidance for Tevm components
+
+If you are writing a Tevm package or a plugin:
+
+- **`fatal`** — reserve it for "we are calling `process.exit` after this".
+- **`error`** — an RPC request could not be served, a fork provider is unreachable, state failed to persist. A
+  reverted EVM call is *not* an error; a revert is a normal, expected result.
+- **`warn`** — a deprecated option was passed, a fork fell back to a cached block, a request took absurdly long.
+- **`info`** — node started, fork established at block N, server listening. Keep this under a handful of records
+  per lifecycle event; anything per-request belongs at `debug`.
+- **`debug`** — per-request or per-call summaries: method name, gas used, duration.
+- **`trace`** — per-opcode or per-storage-slot detail. Assume it is thousands of records per second and that
+  nobody will run it outside a debugging session.

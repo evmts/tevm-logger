@@ -1,0 +1,111 @@
+---
+title: Testing code that logs
+description: Assert on log output without polluting test output, using pino streams and Vitest.
+---
+
+# Testing code that logs
+
+Code under test should not spray JSON across your test reporter, and sometimes the log record *is* the behavior
+you want to assert. Both are solved by giving the logger a destination you control.
+
+## Silence logs in tests
+
+The cheapest option: create the logger at a level nothing reaches.
+
+```ts [silent.test.ts]
+import { createLogger } from '@tevm/logger'
+import { expect, test } from 'vitest'
+
+test('logger can be silenced with a high level', () => {
+	const logger = createLogger({ name: 'test', level: 'fatal' })
+
+	logger.info('never printed')
+	logger.debug('never printed')
+
+	expect(logger.isLevelEnabled('info')).toBe(false)
+})
+```
+
+## Capture and assert on records
+
+To assert on what was logged, build a pino instance over a writable stream. This is the same object shape
+`createLogger` returns, so anything that accepts a `Logger` accepts it.
+
+```ts [capture.test.ts]
+import { Writable } from 'node:stream'
+import type { Logger } from '@tevm/logger'
+import { pino } from 'pino'
+import { expect, test } from 'vitest'
+
+type LogRecord = { level: number; name: string; msg: string; [key: string]: unknown }
+
+/**
+ * Creates a logger that records every emitted line instead of writing to stdout.
+ * @returns The logger and the array it appends parsed records to.
+ */
+const createTestLogger = (): { logger: Logger; records: LogRecord[] } => {
+	const records: LogRecord[] = []
+	const stream = new Writable({
+		write(chunk, _encoding, callback) {
+			records.push(JSON.parse(String(chunk)) as LogRecord)
+			callback()
+		},
+	})
+	const logger = pino({ name: 'test', level: 'trace' }, stream) as Logger
+	return { logger, records }
+}
+
+/** The unit under test: it logs, so we assert on the log. */
+const forkChain = (chainId: number, logger: Logger) => {
+	if (!Number.isInteger(chainId) || chainId <= 0) {
+		throw new Error(`chainId must be a positive integer, received ${chainId}`)
+	}
+	logger.info({ chainId }, 'forked chain')
+}
+
+test('forkChain logs the chain it forked', () => {
+	const { logger, records } = createTestLogger()
+
+	forkChain(1, logger)
+
+	expect(records).toHaveLength(1)
+	expect(records[0]).toMatchObject({ level: 30, name: 'test', chainId: 1, msg: 'forked chain' })
+})
+
+test('forkChain rejects an invalid chain id without logging', () => {
+	const { logger, records } = createTestLogger()
+
+	expect(() => forkChain(0, logger)).toThrow('chainId must be a positive integer, received 0')
+	expect(records).toHaveLength(0)
+})
+```
+
+:::note
+pino writes each record as a single `write` call ending in a newline, so `JSON.parse` per chunk is safe here.
+If you swap in a transport, records are batched and you would need to split on newlines instead.
+:::
+
+## Spying instead of capturing
+
+When you only care *that* something was logged, a Vitest spy on the logger method is less machinery:
+
+```ts [spy.test.ts]
+import { createLogger } from '@tevm/logger'
+import { expect, test, vi } from 'vitest'
+
+test('warns when the fork block is stale', () => {
+	const logger = createLogger({ name: 'test', level: 'fatal' })
+	const warn = vi.spyOn(logger, 'warn')
+
+	const checkFreshness = (blockAgeSeconds: number) => {
+		if (blockAgeSeconds > 60) logger.warn({ blockAgeSeconds }, 'fork block is stale')
+	}
+
+	checkFreshness(120)
+
+	expect(warn).toHaveBeenCalledWith({ blockAgeSeconds: 120 }, 'fork block is stale')
+})
+```
+
+The logger is at `level: 'fatal'`, so nothing is actually written — but the method is still called, so the spy
+still sees it.

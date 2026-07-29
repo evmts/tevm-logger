@@ -1,0 +1,98 @@
+---
+title: LogOptions
+description: API reference for the LogOptions and Level types.
+---
+
+# LogOptions
+
+The options accepted by [`createLogger`](/reference/create-logger).
+
+```ts
+type LogOptions = {
+	/**
+	 * The name of the logger. Adds a name field to every JSON line logged.
+	 */
+	name: string
+	/**
+	 * The minimum level to log.
+	 * Typically, debug and trace logs are only valid for development, and not needed in production.
+	 */
+	level: Level
+}
+```
+
+## Import
+
+```ts
+import type { Level, LogOptions } from '@tevm/logger'
+```
+
+## Properties
+
+### `name`
+
+- **Type:** `string`
+- **Required**
+
+Added as a `name` field to every record. This is the field you filter on to isolate one component's logs. Tevm's
+own components use `TevmClient` (the node) and `@tevm/common` (chain configuration); use something similarly
+specific for your own.
+
+### `level`
+
+- **Type:** [`Level`](#level)
+- **Required**
+
+The minimum severity to emit. Records below it are dropped cheaply.
+
+## Level
+
+```ts
+type Level = 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace'
+```
+
+Standard logging levels from least to most verbose:
+
+| Level   | Numeric | Meaning                                                        |
+| ------- | ------- | -------------------------------------------------------------- |
+| `fatal` | 60      | Critical errors that cause the application to crash.            |
+| `error` | 50      | Error conditions that might still allow it to continue.         |
+| `warn`  | 40      | Warning conditions that should be addressed.                    |
+| `info`  | 30      | Informational messages highlighting normal progress.            |
+| `debug` | 20      | Detailed information for debugging purposes.                    |
+| `trace` | 10      | Extremely detailed information, including function entry/exit.  |
+
+This is also the type of `createTevmNode`'s `loggingLevel` option — see
+[Using the logger with Tevm Node](/guides/tevm-node).
+
+## Example
+
+Building options from configuration, with validation:
+
+```ts [options.ts]
+import { createLogger, type Level, type LogOptions } from '@tevm/logger'
+
+const LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const
+
+/**
+ * Builds LogOptions from environment variables.
+ * @throws {Error} If LOG_LEVEL is set to something that is not a valid level.
+ */
+export const optionsFromEnv = (): LogOptions => {
+	const level = process.env['LOG_LEVEL'] ?? 'info'
+	if (!(LEVELS as readonly string[]).includes(level)) {
+		throw new Error(`Invalid LOG_LEVEL ${JSON.stringify(level)}. Expected one of: ${LEVELS.join(', ')}`)
+	}
+	return {
+		name: process.env['SERVICE_NAME'] ?? 'tevm-app',
+		level: level as Level,
+	}
+}
+
+const logger = createLogger(optionsFromEnv())
+logger.info({ level: logger.level }, 'logger configured')
+```
+
+## Source
+
+[`src/LogOptions.ts`](https://github.com/evmts/tevm-logger/blob/main/src/LogOptions.ts)

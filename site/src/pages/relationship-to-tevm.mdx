@@ -1,0 +1,94 @@
+---
+title: Relationship to Tevm
+description: How tevm-logger relates to Tevm core, the bundler, and the other split repos.
+---
+
+# Relationship to Tevm
+
+## Where this repo came from
+
+`@tevm/logger` lived in [`evmts/tevm-monorepo`](https://github.com/evmts/tevm-monorepo) as `packages/logger`. It
+was extracted into [`evmts/tevm-logger`](https://github.com/evmts/tevm-logger) with its package history
+preserved, and is now versioned and released independently.
+
+The package name did **not** change. `pnpm add @tevm/logger` installs the same package it always did; only the
+repository it is built from moved.
+
+## Who depends on it
+
+Inside the monorepo, `@tevm/logger` is a dependency of:
+
+| Package             | What it logs                                          |
+| ------------------- | ----------------------------------------------------- |
+| `@tevm/node`        | Node lifecycle, forking, request handling (`TevmClient`) |
+| `@tevm/common`      | Chain and hardfork configuration (`@tevm/common`)      |
+| `@tevm/blockchain`  | Block insertion, reorgs                               |
+| `@tevm/evm`         | Execution internals                                   |
+| `@tevm/state`       | State cache and fork state fetching                   |
+| `@tevm/compiler`    | Solidity compilation (bundler)                        |
+| `@tevm/mud`         | MUD integration (bundler)                             |
+
+It sits at the bottom of the dependency graph on purpose: it depends only on `pino`, and on nothing else in
+Tevm. That is what lets `@tevm/state` log without depending on the EVM, and lets the bundler log without
+depending on the node.
+
+```
+                @tevm/logger  ──►  pino
+                     ▲
+       ┌─────────────┼──────────────┬───────────────┐
+  @tevm/common  @tevm/state   @tevm/blockchain  @tevm/compiler
+       ▲             ▲              ▲
+       └────────── @tevm/evm ───────┘
+                     ▲
+                @tevm/node  ──►  tevm
+```
+
+## What lives here vs. what lives elsewhere
+
+**This repo owns** the `createLogger` factory, the `Logger` and `LogOptions`/`Level` types, this documentation
+site, and the release of `@tevm/logger` to npm.
+
+**This repo does not own** how Tevm components choose their levels or what they log. `createTevmNode`'s
+`loggingLevel` default of `warn`, and the specific records `@tevm/node` emits, live in the monorepo. File issues
+about *what Tevm logs* against `tevm-monorepo`; file issues about *the logger itself* here.
+
+## Documentation map
+
+| Site                                           | Covers                                          |
+| ---------------------------------------------- | ----------------------------------------------- |
+| [tevm.sh](https://tevm.sh)                     | Umbrella Tevm documentation                     |
+| [node.tevm.sh](https://node.tevm.sh)           | Tevm Node — the in-JS Ethereum node             |
+| **logger.tevm.sh** (this site)                 | `@tevm/logger`                                  |
+
+## Versioning
+
+`@tevm/logger` releases independently via [changesets](https://github.com/changesets/changesets), on the same
+`1.0.0-rc.x` line as the rest of Tevm. Because RC versions are prerelease identifiers, a caret range does not
+span RCs — pin the exact version if you want the logger and `tevm` to move together. See
+[Installation](/getting-started/installation#version-ranges).
+
+## Contributing
+
+The repo is small and the loop is fast:
+
+```bash
+git clone https://github.com/evmts/tevm-logger.git
+cd tevm-logger
+pnpm install
+pnpm test        # vitest
+pnpm typecheck   # tsc --noEmit
+pnpm lint        # biome
+pnpm build       # tsup
+```
+
+For the docs site:
+
+```bash
+cd site
+pnpm install
+pnpm dev         # http://localhost:5173
+pnpm build
+```
+
+Changes to the public API need a changeset (`pnpm changeset`). Missing or wrong JSDoc in `src/` is treated as a
+bug — fix it in the source, and the reference pages here alongside it.

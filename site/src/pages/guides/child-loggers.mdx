@@ -1,0 +1,130 @@
+---
+title: Child loggers & context
+description: Attach request ids and component names to every log record with child loggers.
+---
+
+# Child loggers & context
+
+`createLogger` returns a pino logger, so `logger.child(bindings)` is available. A child logger inherits the
+level and destination of its parent and adds fields to **every** record it emits. This is how you stop passing
+`requestId` into every log call by hand.
+
+## One logger, many components
+
+```ts [components.ts]
+import { createLogger, type Logger } from '@tevm/logger'
+
+const root = createLogger({ name: 'tevm-node', level: 'debug' })
+
+// Each subsystem gets a child with a `component` field.
+const evmLogger: Logger = root.child({ component: 'evm' })
+const rpcLogger: Logger = root.child({ component: 'rpc' })
+const forkLogger: Logger = root.child({ component: 'fork' })
+
+evmLogger.debug({ gasUsed: 21_000n }, 'executed call')
+rpcLogger.info({ method: 'eth_blockNumber' }, 'served request')
+forkLogger.warn({ url: 'https://mainnet.example' }, 'fork provider slow')
+```
+
+Every record still carries `name: "tevm-node"`, plus the `component` you bound:
+
+```json
+{"level":20,"time":1739577600000,"name":"tevm-node","component":"evm","gasUsed":"21000","msg":"executed call"}
+{"level":30,"time":1739577600001,"name":"tevm-node","component":"rpc","method":"eth_blockNumber","msg":"served request"}
+```
+
+## Per-request context
+
+The common case: bind a request id once, then log freely inside the handler.
+
+```ts [request-context.ts]
+import { randomUUID } from 'node:crypto'
+import { createServer } from 'node:http'
+import { createLogger } from '@tevm/logger'
+
+const logger = createLogger({ name: 'tevm-rpc', level: 'info' })
+
+const server = createServer((request, response) => {
+	const requestLogger = logger.child({
+		requestId: randomUUID(),
+		method: request.method,
+		url: request.url,
+	})
+	const startedAt = process.hrtime.bigint()
+
+	requestLogger.info('request received')
+
+	response.on('finish', () => {
+		const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6
+		requestLogger.info({ status: response.statusCode, durationMs }, 'request completed')
+	})
+
+	response.writeHead(200, { 'content-type': 'application/json' })
+	response.end(JSON.stringify({ jsonrpc: '2.0', id: 1, result: '0x1' }))
+})
+
+server.listen(8545, () => logger.info({ port: 8545 }, 'listening'))
+```
+
+Both records share the same `requestId`, so a log pipeline can group them without any correlation logic on your
+side.
+
+## Passing loggers into your own code
+
+Accept a `Logger` rather than constructing one inside a library function. That leaves the level, destination,
+and bound context under the caller's control.
+
+```ts [inject.ts]
+import { createLogger, type Logger } from '@tevm/logger'
+
+type SendTransactionParams = {
+	to: `0x${string}`
+	value: bigint
+	logger: Logger
+}
+
+/**
+ * Simulates sending a transaction, logging through the caller's logger.
+ * @throws {Error} If `value` is negative.
+ */
+const sendTransaction = async ({ to, value, logger }: SendTransactionParams): Promise<`0x${string}`> => {
+	if (value < 0n) throw new Error(`value must be non-negative, received ${value}`)
+
+	const txLogger = logger.child({ to, value })
+	txLogger.debug('submitting transaction')
+
+	const hash = `0x${'ab'.repeat(32)}` as const
+	txLogger.info({ hash }, 'transaction submitted')
+	return hash
+}
+
+const logger = createLogger({ name: 'wallet', level: 'debug' })
+
+await sendTransaction({
+	to: '0x0000000000000000000000000000000000000001',
+	value: 10n ** 18n,
+	logger,
+})
+```
+
+## Cost
+
+`child()` is cheap — pino precomputes the serialized bindings once — but it is not free. Creating one child per
+request is the intended usage; creating one per log call is not.
+
+Children created from a child stack their bindings, and setting `level` on a child only affects that child and
+its own descendants:
+
+```ts [nested.ts]
+import { createLogger } from '@tevm/logger'
+
+const root = createLogger({ name: 'tevm-node', level: 'info' })
+const evm = root.child({ component: 'evm' })
+const call = evm.child({ callDepth: 1 })
+
+// Turn on verbose logging for just this subtree.
+call.level = 'trace'
+
+call.trace('visible: this child is at trace')
+evm.trace('hidden: the parent is still at info')
+```

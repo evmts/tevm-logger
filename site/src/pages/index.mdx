@@ -1,0 +1,90 @@
+---
+title: '@tevm/logger — structured logging for Tevm'
+description: Shared structured logging used by Tevm core and the Tevm bundler, built on pino.
+---
+
+import { InstallCommand } from '../components/InstallCommand'
+import { LogStream } from '../components/LogStream'
+import { LogPlayground } from '../components/LogPlayground'
+import { TevmSites } from '../components/TevmSites'
+
+<div className="tevm-hero">
+	<span className="tevm-hero-eyebrow">@tevm/logger</span>
+	<h1>
+		One logger for <span className="tevm-hero-accent">every Tevm package</span>
+	</h1>
+	<p className="tevm-hero-sub">
+		`@tevm/logger` is the shared structured-logging layer for Tevm core and the Tevm bundler. A
+		thin, typed wrapper over pino — one log format, one level vocabulary, zero config drift
+		between packages.
+	</p>
+	<div className="tevm-hero-actions">
+		<InstallCommand />
+		<a className="tevm-button" href="/playground">
+			Try the playground →
+		</a>
+	</div>
+</div>
+
+<LogStream />
+
+## At a glance
+
+```ts
+import { createLogger } from '@tevm/logger'
+
+const logger = createLogger({
+	name: 'my-module',
+	level: 'debug', // trace | debug | info | warn | error | fatal
+})
+
+logger.info({ chainId: 1 }, 'Tevm node ready')
+// {"level":30,"time":1700000000000,"pid":4242,"name":"my-module","chainId":1,"msg":"Tevm node ready"}
+
+logger.debug('SSTORE slot 0x0…3f9a')
+logger.error(new Error('fork transport timeout'))
+```
+
+## Why it exists
+
+<div className="tevm-features">
+	<div className="tevm-feature">
+		<h3>One log shape</h3>
+		<p>
+			Every Tevm package logs the same pino JSON lines, so a single `pino-pretty` or log drain
+			formats all of them.
+		</p>
+	</div>
+	<div className="tevm-feature">
+		<h3>Typed levels</h3>
+		<p>
+			`fatal | error | warn | info | debug | trace` as a first-class union type — no stringly
+			typed verbosity flags.
+		</p>
+	</div>
+	<div className="tevm-feature">
+		<h3>Named loggers</h3>
+		<p>
+			Every line carries a `name` field (`tevm:vm`, `tevm:bundler`, …) so you can filter a noisy
+			trace down to one module.
+		</p>
+	</div>
+	<div className="tevm-feature">
+		<h3>Fast by default</h3>
+		<p>
+			Built on pino — the fastest Node.js logger — so tracing the EVM doesn't slow the EVM down.
+		</p>
+	</div>
+</div>
+
+## Try it
+
+Pick a level, emit logs, and watch how `createLogger({ level })` filters the stream:
+
+<LogPlayground />
+
+## The Tevm family
+
+This site is one of the `*.tevm.sh` docs sites — jump between them:
+
+<TevmSites />

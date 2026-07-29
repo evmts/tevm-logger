@@ -1,0 +1,21 @@
+---
+title: Playground
+description: Try @tevm/logger live — emit logs at every level and see pino JSON output.
+---
+
+import { LogPlayground } from '../components/LogPlayground'
+
+# Playground
+
+`@tevm/logger` emits newline-delimited JSON via pino. Set a **logger level** to filter the stream,
+then emit logs and watch the raw output.
+
+```ts
+import { createLogger } from '@tevm/logger'
+
+const logger = createLogger({ name: 'my-module', level: 'debug' })
+logger.info('hello') // logged
+logger.trace('noisy') // dropped — below the configured level
+```
+
+<LogPlayground />

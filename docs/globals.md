@@ -6,6 +6,7 @@
 
 ## Type Aliases
 
+- [Level](type-aliases/Level.md)
 - [Logger](type-aliases/Logger.md)
 - [LogOptions](type-aliases/LogOptions.md)
 

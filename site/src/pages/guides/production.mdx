@@ -1,0 +1,133 @@
+---
+title: Transports & redaction in production
+description: Ship logs to files or collectors, redact secrets, and flush before exit.
+---
+
+# Transports & redaction in production
+
+In production you want three things from a logger: it should not block, it should not leak secrets, and it
+should not lose the last record when the process dies. pino gives you all three; `createLogger` gives you the
+default, and you reach for pino directly when you need more.
+
+## What `createLogger` gives you by default
+
+```ts
+import { createLogger } from '@tevm/logger'
+
+const logger = createLogger({ name: 'tevm-node', level: 'info' })
+```
+
+That writes newline-delimited JSON synchronously to stdout (fd 1). For a containerized process whose stdout is
+collected by Docker, Kubernetes, or systemd, this is the right answer and you should stop here. Let the platform
+own shipping.
+
+## Redacting secrets
+
+RPC URLs with API keys and private keys must never reach a log aggregator. Configure `redact` on a pino instance:
+
+```ts [redacted-logger.ts]
+import type { Logger } from '@tevm/logger'
+import { pino } from 'pino'
+
+export const logger: Logger = pino({
+	name: 'tevm-node',
+	level: 'info',
+	redact: {
+		paths: ['forkUrl', 'privateKey', 'req.headers.authorization', '*.apiKey'],
+		censor: '[redacted]',
+	},
+}) as Logger
+
+logger.info(
+	{
+		forkUrl: 'https://mainnet.infura.io/v3/SUPER_SECRET_KEY',
+		provider: { apiKey: 'sk-live-123' },
+		chainId: 1,
+	},
+	'forked mainnet',
+)
+```
+
+Output:
+
+```json
+{"level":30,"time":1739577600000,"name":"tevm-node","forkUrl":"[redacted]","provider":{"apiKey":"[redacted]"},"chainId":1,"msg":"forked mainnet"}
+```
+
+Redaction only applies to structured fields. A secret interpolated into the **message string** is not redacted —
+a message built with template interpolation leaks. Always pass values as fields.
+
+## Writing to a file or a collector
+
+Transports run the formatting and I/O on a worker thread, so the main thread is never blocked:
+
+```ts [file-transport.ts]
+import type { Logger } from '@tevm/logger'
+import { pino } from 'pino'
+
+export const logger: Logger = pino({
+	name: 'tevm-node',
+	level: 'info',
+	transport: {
+		targets: [
+			// Keep human-readable output on stdout…
+			{ target: 'pino/file', level: 'info', options: { destination: 1 } },
+			// …and a durable copy on disk.
+			{ target: 'pino/file', level: 'warn', options: { destination: './logs/tevm.log', mkdir: true } },
+		],
+	},
+}) as Logger
+
+logger.info('this goes to stdout only')
+logger.warn({ blockNumber: 21_000_000n }, 'this goes to stdout and the file')
+```
+
+`pino/file` is built into pino, so this needs no extra dependency. Third-party targets
+(`pino-loki`, `pino-datadog-transport`, `pino-opentelemetry-transport`, …) follow the same shape and must be
+installed as runtime dependencies.
+
+## Flushing before exit
+
+Async transports buffer. If the process exits without flushing, you lose the records that mattered most — the
+ones just before the crash.
+
+```ts [graceful-shutdown.ts]
+import type { Logger } from '@tevm/logger'
+import { pino } from 'pino'
+
+const transport = pino.transport({
+	target: 'pino/file',
+	options: { destination: './logs/tevm.log', mkdir: true },
+})
+
+export const logger: Logger = pino({ name: 'tevm-node', level: 'info' }, transport) as Logger
+
+const shutdown = (signal: NodeJS.Signals) => {
+	logger.info({ signal }, 'shutting down')
+	// Flush buffered records, then exit once the transport has drained.
+	logger.flush()
+	transport.on('close', () => process.exit(0))
+	transport.end()
+}
+
+process.on('SIGINT', shutdown)
+process.on('SIGTERM', shutdown)
+
+process.on('uncaughtException', (error) => {
+	logger.fatal({ err: error }, 'uncaught exception')
+	logger.flush()
+	process.exit(1)
+})
+
+logger.info('node started')
+```
+
+## A production checklist
+
+- **Level `info`.** `debug` in production is a cost and a privacy problem; toggle it at runtime instead (see
+  [Log levels](/guides/log-levels)).
+- **Redact** fork URLs, private keys, and `authorization` headers.
+- **Never interpolate secrets into messages** — redaction cannot see inside `msg`.
+- **Bind a `name`** per component so you can filter by subsystem.
+- **Log errors under `err`** so pino's serializer emits the type, message, and stack.
+- **Flush on `SIGTERM`/`SIGINT`/`uncaughtException`** if you use an async transport.

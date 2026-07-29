@@ -1,0 +1,94 @@
+---
+title: Pretty printing in development
+description: Turn newline-delimited JSON into readable, colorized output while developing.
+---
+
+# Pretty printing in development
+
+`createLogger` writes newline-delimited JSON, which is what you want in production and not what you want in a
+terminal. [`pino-pretty`](https://github.com/pinojs/pino-pretty) reformats it.
+
+```bash
+pnpm add -D pino-pretty
+```
+
+## Option 1: pipe (recommended)
+
+Piping keeps formatting out of your process entirely — no extra dependency at runtime, no worker thread, no
+risk of shipping the pretty printer to production.
+
+```json [package.json]
+{
+	"scripts": {
+		"dev": "node --experimental-strip-types src/main.ts | pino-pretty --colorize --translateTime SYS:HH:MM:ss.l --ignore pid,hostname"
+	}
+}
+```
+
+Output:
+
+```
+[14:22:31.004] INFO (tevm-node): forked mainnet
+    chainId: 1
+    blockNumber: "21000000"
+```
+
+:::warning
+When you pipe, your process's exit code is the *pipeline's* exit code. In CI, use `set -o pipefail` (bash/zsh)
+so a crash in your program is not masked by a healthy `pino-pretty`.
+:::
+
+## Option 2: in-process transport
+
+If you cannot control how the process is launched, configure the transport yourself. `createLogger` does not
+accept transport options, so build the pino instance directly for the dev path and keep `createLogger` for
+everything else:
+
+```ts [logger.ts]
+import { createLogger, type Level, type Logger } from '@tevm/logger'
+import { pino } from 'pino'
+
+const level: Level = (process.env['LOG_LEVEL'] as Level | undefined) ?? 'info'
+const isDev = process.env['NODE_ENV'] !== 'production'
+
+/**
+ * The application logger: pretty in development, JSON everywhere else.
+ * @throws {Error} If `pino-pretty` is not installed while running in development.
+ */
+export const logger: Logger = isDev
+	? (pino({
+			name: 'tevm-app',
+			level,
+			transport: {
+				target: 'pino-pretty',
+				options: { colorize: true, translateTime: 'SYS:HH:MM:ss.l', ignore: 'pid,hostname' },
+			},
+		}) as Logger)
+	: createLogger({ name: 'tevm-app', level })
+
+logger.info('logger ready')
+```
+
+pino resolves `target: 'pino-pretty'` at construction time and throws if the module is not installed — hence the
+`@throws` above. Keep `pino-pretty` in `devDependencies` and make sure `NODE_ENV=production` is actually set in
+production, or the process will fail to start.
+
+## Browser bundles
+
+Transports are a Node feature (they run in a worker thread). Never let the branch above reach a browser bundle —
+`pino-pretty` pulls in `node:worker_threads` and will break the build. If the same module is shared between
+server and browser code, guard on the runtime instead of the environment variable:
+
+```ts [isomorphic-logger.ts]
+import { createLogger, type Logger } from '@tevm/logger'
+
+const isBrowser = typeof window !== 'undefined'
+
+export const logger: Logger = createLogger({
+	name: isBrowser ? 'tevm-web' : 'tevm-server',
+	level: isBrowser ? 'warn' : 'info',
+})
+```
+
+In the browser, pino writes through `console.info`/`console.warn`/`console.error`, which DevTools already
+formats — no pretty printer needed.

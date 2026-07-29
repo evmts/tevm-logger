@@ -1,0 +1,82 @@
+---
+title: Quick start
+description: Create a logger and write your first structured log records.
+---
+
+# Quick start
+
+This page is one complete script. Copy it into `quick-start.ts`, run it with `node --experimental-strip-types
+quick-start.ts` (Node 24 runs TypeScript directly), and you will see structured JSON on stdout.
+
+```ts [quick-start.ts]
+import { createLogger } from '@tevm/logger'
+
+// One logger per component. `name` shows up on every record it emits.
+const logger = createLogger({
+	name: 'quick-start',
+	level: 'debug',
+})
+
+// A message on its own.
+logger.info('starting up')
+
+// A message with structured fields. The object goes FIRST, the message second.
+logger.info({ chainId: 1, port: 8545 }, 'listening for JSON-RPC requests')
+
+// Levels below the configured `level` are dropped with almost no cost.
+logger.debug({ cacheSize: 128 }, 'warmed the state cache')
+logger.trace('you will not see this — level is debug')
+
+// Errors: pass the Error under the `err` key so pino serializes the stack.
+try {
+	throw new Error('reverted: out of gas')
+} catch (error) {
+	logger.error({ err: error }, 'call failed')
+}
+
+logger.warn({ blockNumber: 21_000_000n }, 'fork block is stale')
+```
+
+## The output
+
+Each call writes one newline-delimited JSON object to stdout:
+
+```json
+{"level":30,"time":1739577600000,"pid":41234,"hostname":"nuc","name":"quick-start","msg":"starting up"}
+{"level":30,"time":1739577600001,"pid":41234,"hostname":"nuc","name":"quick-start","chainId":1,"port":8545,"msg":"listening for JSON-RPC requests"}
+{"level":20,"time":1739577600001,"pid":41234,"hostname":"nuc","name":"quick-start","cacheSize":128,"msg":"warmed the state cache"}
+{"level":50,"time":1739577600002,"pid":41234,"hostname":"nuc","name":"quick-start","err":{"type":"Error","message":"reverted: out of gas","stack":"Error: reverted: out of gas\n    at ..."},"msg":"call failed"}
+{"level":40,"time":1739577600002,"pid":41234,"hostname":"nuc","name":"quick-start","blockNumber":"21000000","msg":"fork block is stale"}
+```
+
+Three things to notice:
+
+1. `level` is a **number**, not a string (`info` is 30, `warn` 40, `error` 50). That is pino's wire format; log
+   viewers and `pino-pretty` map it back to a name.
+2. `name` is the value you passed to `createLogger`, on every record. That is the field you filter on to see
+   just one Tevm subsystem.
+3. `blockNumber` was a `bigint` and came out as a string. pino stringifies BigInts rather than throwing, which
+   matters constantly in Ethereum code.
+
+:::warning
+The argument order is `logger.info(object, message)`, not `logger.info(message, object)`. Passing the object
+second interpolates it into the message string instead of adding structured fields.
+:::
+
+## Making it readable while you develop
+
+Raw JSON is for machines. While developing, pipe it through
+[`pino-pretty`](https://github.com/pinojs/pino-pretty):
+
+```bash
+pnpm add -D pino-pretty
+node --experimental-strip-types quick-start.ts | npx pino-pretty
+```
+
+See [Pretty printing in development](/guides/pretty-printing) for how to wire it in-process instead of piping.
+
+## Where to go next
+
+- [Log levels](/guides/log-levels) — what each level is for, and how to change it at runtime
+- [Child loggers & context](/guides/child-loggers) — attach a request id to every record
+- [`createLogger` reference](/reference/create-logger)
