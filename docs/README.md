@@ -12,7 +12,7 @@ bundler packages. It wraps [pino](https://getpino.io) so TEVM components can use
 on the rest of the TEVM runtime.
 
 This repository was extracted from the
-[TEVM monorepo](https://github.com/evmts/tevm-monorepo) with its package history preserved. It is versioned and released
+[TEVM repository](https://github.com/evmts/tevm) with its package history preserved. It is versioned and released
 independently, while the umbrella TEVM documentation remains at [tevm.sh](https://tevm.sh).
 
 ## Installation
@@ -50,7 +50,13 @@ pnpm build
 pnpm test
 ```
 
-Package API documentation lives at [logger.tevm.sh](https://logger.tevm.sh).
+Package API documentation lives at [logger.tevm.sh](https://logger.tevm.sh). The site source is in
+[`site/`](https://github.com/evmts/tevm-logger/tree/main/site) (built with [vocs](https://vocs.dev)):
+
+```sh
+pnpm docs:dev     # local dev server
+pnpm docs:build   # production build (also checks for dead links)
+```
 
 ## Releases
 

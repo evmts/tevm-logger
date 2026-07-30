@@ -29,12 +29,12 @@ record carries the `name` passed here, which is how logs from different tevm com
 
 [`Logger`](../type-aliases/Logger.md)
 
-A logger instance
+A configured pino logger.
 
 ## Throws
 
-If `options.level` is not one of `fatal`, `error`, `warn`, `info`, `debug` or `trace`. pino
-validates the level eagerly and throws `unknown level <level>`.
+If `options.level` is not one of `fatal`, `error`, `warn`, `info`, `debug` or `trace`.
+Pino validates the level eagerly.
 
 ## Examples
 

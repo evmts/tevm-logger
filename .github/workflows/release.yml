@@ -10,6 +10,10 @@ permissions:
   pull-requests: write
   id-token: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -36,6 +40,15 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Validate release
+        run: |
+          pnpm lint
+          pnpm typecheck
+          pnpm build
+          pnpm test:coverage
+          pnpm lint:package
+          pnpm changeset status
 
       - name: Create release pull request or publish
         uses: changesets/action@v1

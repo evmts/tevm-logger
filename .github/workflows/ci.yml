@@ -40,4 +40,10 @@ jobs:
         run: pnpm build
 
       - name: Test
-        run: pnpm test
+        run: pnpm test:coverage
+
+      - name: Validate package exports
+        run: pnpm lint:package
+
+      - name: Validate changesets
+        run: pnpm changeset status

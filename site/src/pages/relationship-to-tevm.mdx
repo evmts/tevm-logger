@@ -7,7 +7,7 @@ description: How tevm-logger relates to Tevm core, the bundler, and the other sp
 
 ## Where this repo came from
 
-`@tevm/logger` lived in [`evmts/tevm-monorepo`](https://github.com/evmts/tevm-monorepo) as `packages/logger`. It
+`@tevm/logger` lived in [`evmts/tevm`](https://github.com/evmts/tevm) as `packages/logger`. It
 was extracted into [`evmts/tevm-logger`](https://github.com/evmts/tevm-logger) with its package history
 preserved, and is now versioned and released independently.
 
@@ -49,8 +49,8 @@ depending on the node.
 site, and the release of `@tevm/logger` to npm.
 
 **This repo does not own** how Tevm components choose their levels or what they log. `createTevmNode`'s
-`loggingLevel` default of `warn`, and the specific records `@tevm/node` emits, live in the monorepo. File issues
-about *what Tevm logs* against `tevm-monorepo`; file issues about *the logger itself* here.
+`loggingLevel` default of `warn`, and the specific records `@tevm/node` emits, live in the Tevm repository. File issues
+about *what Tevm logs* against [`evmts/tevm`](https://github.com/evmts/tevm); file issues about *the logger itself* here.
 
 ## Documentation map
 
@@ -63,8 +63,8 @@ about *what Tevm logs* against `tevm-monorepo`; file issues about *the logger it
 ## Versioning
 
 `@tevm/logger` releases independently via [changesets](https://github.com/changesets/changesets), on the same
-`1.0.0-rc.x` line as the rest of Tevm. Because RC versions are prerelease identifiers, a caret range does not
-span RCs — pin the exact version if you want the logger and `tevm` to move together. See
+`1.0.0-rc.x` line as the rest of Tevm. Depend on it with a caret range so compatible standalone fixes can be
+adopted without pinning an exact release. See
 [Installation](/getting-started/installation#version-ranges).
 
 ## Contributing

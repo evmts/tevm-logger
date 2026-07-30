@@ -30,20 +30,19 @@ bun add @tevm/logger
 
 ## Version ranges
 
-Because 1.0 is still a release candidate, a caret range will **not** pick up newer RCs (`^1.0.0-rc.151` does not
-match `1.0.0-rc.152`). Pick the range deliberately:
+Use a caret range so package managers can install compatible logger fixes without requiring a source change:
 
 ```json [package.json]
 {
 	"dependencies": {
-		"@tevm/logger": "1.0.0-rc.151"
+		"@tevm/logger": "^1.0.0-rc.151"
 	}
 }
 ```
 
-- **Pin the exact RC** (shown above) if you also depend on `tevm` and want the two to move together.
-- Use `"^1.0.0-rc.151"` only if you are happy staying on that exact RC until you bump manually.
-- Once 1.0.0 final ships, `"^1.0.0"` is the range you want.
+`^1.0.0-rc.151` accepts later prereleases with the same `1.0.0` tuple and the eventual stable `1.x` releases,
+while excluding `2.0.0`. npm does not select prereleases with a different tuple (for example `1.0.1-rc.1`)
+unless that prerelease is named explicitly. Once `1.0.0` final ships, new installs should use `"^1.0.0"`.
 
 If you already depend on `tevm`, you do not need to install this package separately — `tevm` depends on it and
 re-exports nothing you need. Install it directly when you are writing a package that logs but should not depend
