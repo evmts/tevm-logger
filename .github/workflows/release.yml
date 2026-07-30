@@ -10,22 +10,26 @@ permissions:
   pull-requests: write
   id-token: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9.15.9
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -36,6 +40,15 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Validate release
+        run: |
+          pnpm lint
+          pnpm typecheck
+          pnpm build
+          pnpm test:coverage
+          pnpm lint:package
+          pnpm changeset status
 
       - name: Create release pull request or publish
         uses: changesets/action@v1

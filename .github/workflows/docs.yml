@@ -7,11 +7,17 @@ on:
     paths:
       - 'site/**'
       - 'src/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/docs.yml'
   pull_request:
     paths:
       - 'site/**'
       - 'src/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -28,15 +34,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9.15.9
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -53,13 +59,20 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name != 'pull_request'
-    # Deployment is a no-op unless the Vercel secrets are configured on the repo.
     environment:
       name: docs
       url: https://logger.tevm.sh
+    defaults:
+      run:
+        working-directory: site
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
 
       - name: Deploy
         env:
@@ -67,11 +80,9 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          if [ -z "$VERCEL_TOKEN" ]; then
-            echo "VERCEL_TOKEN is not set — skipping deploy."
-            echo "Vercel's Git integration may already be deploying this repo."
-            exit 0
-          fi
+          test -n "$VERCEL_TOKEN"
+          test -n "$VERCEL_ORG_ID"
+          test -n "$VERCEL_PROJECT_ID"
           npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
           npx --yes vercel@latest build --prod --token="$VERCEL_TOKEN"
           npx --yes vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"

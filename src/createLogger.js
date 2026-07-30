@@ -11,9 +11,9 @@ import { pino } from 'pino'
  * record carries the `name` passed here, which is how logs from different tevm components are told apart.
  *
  * @param {import('./LogOptions.js').LogOptions} options - Logger name and minimum level.
- * @returns {import('./Logger.js').Logger} A logger instance
- * @throws {Error} If `options.level` is not one of `fatal`, `error`, `warn`, `info`, `debug` or `trace`. pino
- * validates the level eagerly and throws `unknown level <level>`.
+ * @returns {import('./Logger.js').Logger} A configured pino logger.
+ * @throws {Error} If `options.level` is not one of `fatal`, `error`, `warn`, `info`, `debug` or `trace`.
+ * Pino validates the level eagerly.
  * @example
  * ```typescript
  * import { createLogger } from '@tevm/logger'

@@ -42,7 +42,7 @@ Both properties are required.
 ```ts
 import { createLogger } from '@tevm/logger'
 
-// Throws: unknown level verbose
+// Throws because "verbose" is not one of the standard pino levels.
 createLogger({ name: 'app', level: 'verbose' as never })
 ```
 
