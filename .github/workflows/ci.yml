@@ -14,15 +14,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9.15.9
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -40,4 +42,21 @@ jobs:
         run: pnpm build
 
       - name: Test
-        run: pnpm test
+        run: pnpm test:coverage
+
+      - name: Test emitted logs
+        run: pnpm test:fuzz
+
+      - name: Test built package
+        run: pnpm test:e2e
+
+      - name: Run benchmarks
+        run: pnpm bench
+
+      - name: Validate package exports
+        run: pnpm lint:package
+
+      # The generated release PR consumes the pending changesets.
+      - name: Validate changesets
+        if: github.head_ref != 'changeset-release/main' || github.event.pull_request.head.repo.full_name != github.repository
+        run: pnpm exec changeset status --since origin/main

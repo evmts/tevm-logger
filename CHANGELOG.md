@@ -1,4 +1,4 @@
-# @tevm/state
+# @tevm/logger
 
 ## 1.0.0-rc.151
 

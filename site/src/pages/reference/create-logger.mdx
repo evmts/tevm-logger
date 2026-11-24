@@ -6,7 +6,7 @@ description: API reference for createLogger.
 # createLogger
 
 Creates a Tevm logger instance. Thin wrapper around [pino](https://getpino.io/#/docs/api): the returned value
-**is** a pino logger, so every pino feature works exactly as pino documents it.
+supports standard pino logging methods, child loggers, and runtime level changes.
 
 ```ts
 function createLogger(options: LogOptions): Logger
@@ -37,12 +37,12 @@ Both properties are required.
 
 ## Throws
 
-`Error` — if `options.level` is not one of the six valid levels. pino validates eagerly at construction:
+`Error` — if pino rejects the level at construction. The TypeScript API accepts the six standard levels:
 
 ```ts
 import { createLogger } from '@tevm/logger'
 
-// Throws: unknown level verbose
+// Throws because "verbose" is not one of the standard pino levels.
 createLogger({ name: 'app', level: 'verbose' as never })
 ```
 
@@ -70,8 +70,9 @@ export const loggerFromUnknownLevel = (name: string, level: string): Logger => {
 
 - **Destination.** Node: newline-delimited JSON on stdout (fd 1), written synchronously. Browser: routed to the
   matching `console` method.
-- **Every record includes** `level` (numeric), `time` (epoch ms), `name`, and — in Node — `pid` and `hostname`.
-- **BigInts are serialized as strings** rather than throwing, which matters for block numbers and wei values.
+- **Node records include** `level` (numeric), `time` (epoch ms), `name`, `pid`, and `hostname`.
+- **Convert large integers to strings** before logging block numbers or wei values. Pino can emit a BigInt
+  as a JSON number, which can lose precision when parsed by a JavaScript consumer.
 - **No transport is configured.** For file output, redaction, or async transports, construct pino directly —
   see [Transports & redaction](/guides/production).
 
@@ -85,7 +86,7 @@ import { createLogger } from '@tevm/logger'
 const logger = createLogger({ name: 'tevm-node', level: 'info' })
 
 logger.info('node started')
-logger.info({ chainId: 1, blockNumber: 21_000_000n }, 'forked mainnet')
+logger.info({ chainId: 1, blockNumber: String(21_000_000n) }, 'forked mainnet')
 ```
 
 ### Logging errors

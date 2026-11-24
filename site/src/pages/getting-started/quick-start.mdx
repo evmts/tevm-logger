@@ -34,7 +34,7 @@ try {
 	logger.error({ err: error }, 'call failed')
 }
 
-logger.warn({ blockNumber: 21_000_000n }, 'fork block is stale')
+logger.warn({ blockNumber: String(21_000_000n) }, 'fork block is stale')
 ```
 
 ## The output
@@ -55,8 +55,8 @@ Three things to notice:
    viewers and `pino-pretty` map it back to a name.
 2. `name` is the value you passed to `createLogger`, on every record. That is the field you filter on to see
    just one Tevm subsystem.
-3. `blockNumber` was a `bigint` and came out as a string. pino stringifies BigInts rather than throwing, which
-   matters constantly in Ethereum code.
+3. `String(blockNumber)` preserves the exact value when a JavaScript consumer parses the log. Use the same
+   conversion for wei amounts and other integers that can exceed the safe integer range.
 
 :::warning
 The argument order is `logger.info(object, message)`, not `logger.info(message, object)`. Passing the object

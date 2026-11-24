@@ -4,7 +4,7 @@ export default defineConfig({
 	title: '@tevm/logger',
 	titleTemplate: '%s · @tevm/logger',
 	description: 'Shared structured logging for Tevm core and the Tevm bundler.',
-	baseUrl: process.env.VERCEL_ENV === 'production' ? 'https://logger.tevm.sh' : process.env.VERCEL_URL,
+	baseUrl: 'https://logger.tevm.sh',
 	rootDir: '.',
 	srcDir: 'src',
 	renderStrategy: 'full-static',

@@ -42,7 +42,7 @@ logger.info({ chainId: 1 }, 'Tevm node ready')
 // {"level":30,"time":1700000000000,"pid":4242,"name":"my-module","chainId":1,"msg":"Tevm node ready"}
 
 logger.debug('SSTORE slot 0x0…3f9a')
-logger.error(new Error('fork transport timeout'))
+logger.error({ err: new Error('fork transport timeout') }, 'fork failed')
 ```
 
 ## Why it exists

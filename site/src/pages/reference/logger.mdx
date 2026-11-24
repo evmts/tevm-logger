@@ -106,9 +106,9 @@ use an async transport ([Transports & redaction](/guides/production)).
 
 ## A note on the type
 
-The source carries a `TODO` to narrow this type so Tevm exposes a smaller, stable logging interface rather than
-all of pino. Until that happens, treat the *documented* surface above as the supported one: the rest of pino
-works, but a future minor may narrow `Logger`.
+`Logger` intentionally aliases pino's standard logger API, with custom levels disabled by the `never` type
+argument. Code that accepts this type can use pino's serializers, bindings, transports, and level controls
+without coupling to another Tevm package.
 
 ## Source
 

@@ -10,8 +10,9 @@
 
 Defined in: [LogOptions.ts:27](https://github.com/evmts/tevm-logger/blob/main/src/LogOptions.ts#L27)
 
-Log level used to control the verbosity of logging output
-Follows standard logging level conventions from least to most verbose:
+Log level used to control the verbosity of logging output.
+
+Follows pino's standard levels from most severe to most verbose:
 - fatal: Only critical errors that cause the application to crash
 - error: Error conditions that might still allow the application to continue
 - warn: Warning conditions that should be addressed
@@ -22,14 +23,13 @@ Follows standard logging level conventions from least to most verbose:
 ## Example
 
 ```typescript
-import { Level } from '@tevm/logger'
+import { createLogger, type Level } from '@tevm/logger'
 
-// Using as a type
 const logLevel: Level = 'info'
-
-// Creating logger with specific level
 const logger = createLogger({
   name: 'my-module',
-  level: 'debug' // Show all logs at debug level and above
+  level: logLevel,
 })
+
+logger.info('module ready')
 ```
