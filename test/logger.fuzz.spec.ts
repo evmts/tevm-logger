@@ -27,12 +27,12 @@ it('emits one parseable record per enabled level and preserves structured data',
 					expect(JSON.parse(record)).toMatchObject({
 						level: (levels.indexOf(threshold) + index + 1) * 10,
 						msg: `message: ${message}`,
-						payload,
+						payload: JSON.parse(JSON.stringify(payload)),
 						name,
 					})
 				}
 			}),
-			{ numRuns: 300 },
+			{ numRuns: 300, examples: [['trace', '', '', -0]] },
 		)
 	} finally {
 		write.mockRestore()
