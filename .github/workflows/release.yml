@@ -47,6 +47,8 @@ jobs:
           pnpm typecheck
           pnpm build
           pnpm test:coverage
+          pnpm test:fuzz
+          pnpm test:e2e
           pnpm lint:package
           pnpm changeset status
 

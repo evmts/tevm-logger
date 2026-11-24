@@ -8,12 +8,11 @@
 
 > **Logger** = `Logger`
 
-Defined in: [Logger.ts:19](https://github.com/evmts/tevm-logger/blob/main/src/Logger.ts#L19)
+Defined in: [Logger.ts:18](https://github.com/evmts/tevm-logger/blob/main/src/Logger.ts#L18)
 
 The pino logger returned by [createLogger](../functions/createLogger.md).
 
-The logger supports pino's standard level methods, child bindings, runtime
-level changes, serializers, redaction, and transports.
+The logger supports pino's standard level methods, child bindings, and runtime level changes.
 
 ## Example
 

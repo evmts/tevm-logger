@@ -44,8 +44,19 @@ jobs:
       - name: Test
         run: pnpm test:coverage
 
+      - name: Test emitted logs
+        run: pnpm test:fuzz
+
+      - name: Test built package
+        run: pnpm test:e2e
+
+      - name: Run benchmarks
+        run: pnpm bench
+
       - name: Validate package exports
         run: pnpm lint:package
 
+      # The generated release PR consumes the pending changesets.
       - name: Validate changesets
+        if: github.head_ref != 'changeset-release/main' || github.event.pull_request.head.repo.full_name != github.repository
         run: pnpm exec changeset status --since origin/main

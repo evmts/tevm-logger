@@ -4,16 +4,15 @@ import { pino } from 'pino'
  * Creates a tevm logger instance.
  *
  * Thin wrapper around [pino](https://github.com/pinojs/pino/blob/master/docs/api.md): the returned value is a
- * plain pino logger, so every pino feature (child loggers, transports, redaction, serializers, runtime level
- * changes) is available and behaves exactly as pino documents it.
+ * pino logger with child loggers and runtime level changes. Configure pino directly for custom transports,
+ * redaction, or serializers.
  *
  * Records are written as newline-delimited JSON to stdout in Node, and to the `console` in the browser. Every
  * record carries the `name` passed here, which is how logs from different tevm components are told apart.
  *
  * @param {import('./LogOptions.js').LogOptions} options - Logger name and minimum level.
  * @returns {import('./Logger.js').Logger} A configured pino logger.
- * @throws {Error} If `options.level` is not one of `fatal`, `error`, `warn`, `info`, `debug` or `trace`.
- * Pino validates the level eagerly.
+ * @throws {Error} If pino rejects the supplied level.
  * @example
  * ```typescript
  * import { createLogger } from '@tevm/logger'
@@ -21,7 +20,7 @@ import { pino } from 'pino'
  * const logger = createLogger({ name: 'tevm-node', level: 'info' })
  *
  * logger.info('node started')
- * logger.info({ chainId: 1, blockNumber: 21000000n }, 'forked mainnet')
+ * logger.info({ chainId: 1, blockNumber: String(21000000n) }, 'forked mainnet')
  *
  * try {
  *   throw new Error('fork provider unreachable')

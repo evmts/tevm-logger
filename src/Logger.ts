@@ -1,8 +1,7 @@
 /**
  * The pino logger returned by {@link createLogger}.
  *
- * The logger supports pino's standard level methods, child bindings, runtime
- * level changes, serializers, redaction, and transports.
+ * The logger supports pino's standard level methods, child bindings, and runtime level changes.
  *
  * @example
  * ```typescript

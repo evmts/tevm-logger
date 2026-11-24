@@ -47,8 +47,14 @@ pnpm install
 pnpm lint
 pnpm typecheck
 pnpm build
-pnpm test
+pnpm test:coverage
+pnpm test:fuzz
+pnpm test:e2e
+pnpm bench
 ```
+
+The end-to-end suite uses the built ESM and CommonJS entry points. Benchmarks report throughput for
+construction, filtering, and child bindings without enforcing machine-dependent thresholds.
 
 Package API documentation lives at [logger.tevm.sh](https://logger.tevm.sh). The site source is in
 [`site/`](https://github.com/evmts/tevm-logger/tree/main/site) (built with [vocs](https://vocs.dev)):
@@ -57,6 +63,10 @@ Package API documentation lives at [logger.tevm.sh](https://logger.tevm.sh). The
 pnpm docs:dev     # local dev server
 pnpm docs:build   # production build (also checks for dead links)
 ```
+
+The Docs workflow always validates matching changes. To enable production deployment, set the repository
+variable `DOCS_DEPLOY_ENABLED` to `true` and configure `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and
+`VERCEL_PROJECT_ID` in the GitHub `docs` environment.
 
 ## Releases
 
@@ -67,7 +77,7 @@ pnpm changeset
 ```
 
 Merges to `main` update a release pull request. Merging that release pull request publishes the package to npm through
-GitHub Actions with npm provenance.
+GitHub Actions with npm provenance. The publish workflow requires an authorized `NPM_TOKEN` secret.
 
 ## License
 
