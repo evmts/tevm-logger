@@ -1,5 +1,12 @@
 # @tevm/logger
 
+## 1.0.0
+
+### Patch Changes
+
+- 49af4bb: Publish `@tevm/logger` from its standalone repository with verified package exports, expanded behavior tests,
+  corrected API documentation, and independent provenance-enabled release automation.
+
 ## 1.0.0-rc.151
 
 ### Patch Changes
